@@ -180,9 +180,7 @@ func resolveConnectionParams(
 		hostOpt = getHostFromEnv()
 	}
 
-	if portOpt == 0 {
-		portOpt = getPortFromEnv()
-	}
+	portOpt = resolvePort(cmd, portOpt)
 
 	return connectionParams{
 		database: database,
@@ -211,8 +209,8 @@ func resolveInteractiveConnectionParams(
 	if cmd.Flags().Changed("host") {
 		formHost = hostOpt
 	}
-	if cmd.Flags().Changed("port") {
-		formPort = strconv.FormatUint(uint64(portOpt), 10)
+	if cmd.Flags().Changed("port") || getPortFromEnv() != 0 {
+		formPort = strconv.FormatUint(uint64(resolvePort(cmd, portOpt)), 10)
 	}
 
 	connValues, err := ui.RunConnectionForm(formDB, formUser, formHost, formPort)
@@ -235,6 +233,20 @@ func resolveInteractiveConnectionParams(
 	}
 
 	return params, nil
+}
+
+// resolvePort applies connection-port precedence while preserving Cobra's displayed default.
+// An explicitly supplied --port (including --port=5432) wins over environment defaults.
+func resolvePort(cmd *cobra.Command, portOpt uint16) uint16 {
+	if cmd.Flags().Changed("port") {
+		return portOpt
+	}
+
+	if portFromEnv := getPortFromEnv(); portFromEnv != 0 {
+		return portFromEnv
+	}
+
+	return portOpt
 }
 
 func connectClient(

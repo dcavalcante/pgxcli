@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -127,6 +128,44 @@ func TestResolveDBAndUser(t *testing.T) {
 			actualDB, actualUser := resolveDBAndUser(tc.input.dbnameOpt, tc.input.userOpt, tc.input.argDB, tc.input.argUser)
 			assert.Equal(t, tc.input.expectedDB, actualDB, "finalDB does not match expected value")
 			assert.Equal(t, tc.input.expectedUser, actualUser, "finalUser does not match expected value")
+		})
+	}
+}
+
+func TestResolvePort(t *testing.T) {
+	newCmd := func(t *testing.T) *cobra.Command {
+		t.Helper()
+		cmd := &cobra.Command{}
+		cmd.Flags().Uint16("port", 5432, "port number")
+		return cmd
+	}
+
+	tests := []struct {
+		name     string
+		pgxPort  string
+		pgPort   string
+		explicit string
+		expected uint16
+	}{
+		{name: "uses PGXPORT when flag is omitted", pgxPort: "6543", expected: 6543},
+		{name: "uses PGPORT when PGXPORT is absent", pgPort: "6544", expected: 6544},
+		{name: "PGXPORT takes precedence over PGPORT", pgxPort: "6543", pgPort: "6544", expected: 6543},
+		{name: "explicit port takes precedence over environment", pgPort: "6544", explicit: "5432", expected: 5432},
+		{name: "keeps the flag default when no environment port is set", expected: 5432},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PGXPORT", tt.pgxPort)
+			t.Setenv("PGPORT", tt.pgPort)
+			cmd := newCmd(t)
+			if tt.explicit != "" {
+				require.NoError(t, cmd.Flags().Set("port", tt.explicit))
+			}
+
+			port, err := cmd.Flags().GetUint16("port")
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, resolvePort(cmd, port))
 		})
 	}
 }
