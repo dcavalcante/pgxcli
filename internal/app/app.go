@@ -29,10 +29,6 @@ type Application interface {
 	Close() error
 }
 
-var builtinsCommand = map[string]func() tea.Cmd{
-	"\\clear": func() tea.Cmd { return tea.ClearScreen },
-}
-
 // pgxCLI is the main implementation of the Application interface.
 type pgxCLI struct {
 	model      *ui.Model
@@ -63,9 +59,9 @@ func New(cfg *config.Config, printer cliio.Printer, logger *slog.Logger, client 
 func (p *pgxCLI) execute(ctx context.Context, query string) tea.Cmd {
 	p.logger.Debug("received command", "command_length", len(query))
 
-	if cmd, ok := builtinsCommand[query]; ok {
+	if cmd, ok := p.runLocal(query); ok {
 		p.logger.Debug("executing builtin command", "command", query)
-		return p.withPrompt(cmd())
+		return p.withPrompt(cmd)
 	}
 
 	return func() tea.Msg {
