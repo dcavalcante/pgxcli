@@ -81,6 +81,24 @@ Press `Tab` after `\cd` to complete directory names. Hidden directories are sugg
 
 ---
 
+## Edit SQL in an External Editor
+
+Use `\e` or `\edit` to open SQL in an external editor:
+
+```text
+\e
+\e query.sql
+\edit "query notes.sql"
+```
+
+Without a filename, the editor starts with the most recently submitted SQL, or an empty file when no SQL has been submitted yet. With a filename, pgxcli opens that file instead. After you save and exit, the edited text is returned to the prompt for review; it is not executed automatically.
+
+Relative filenames use the current working directory, including changes made with `\cd`. Press `Tab` after `\e` or `\edit` to complete files and directories.
+
+pgxcli chooses the editor from `$PSQL_EDITOR`, `$EDITOR`, then `$VISUAL`. If none is set, it uses `vi` on Unix-like systems or `notepad.exe` on Windows.
+
+---
+
 ## Built-in Commands
 
 These are pgxcli-specific:

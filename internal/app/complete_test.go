@@ -17,6 +17,78 @@ func TestCompleteMetaCommandIncludesChangeDirectory(t *testing.T) {
 	_, completions := completeMetaCommand(`\c`, 2, 0, 2, maxCompletions)
 	require.NotNil(t, completions)
 	assert.Contains(t, completionReplacements(completions), `\cd`)
+
+	_, completions = completeMetaCommand(`\e`, 2, 0, 2, maxCompletions)
+	require.NotNil(t, completions)
+	assert.Contains(t, completionReplacements(completions), `\e`)
+
+	_, completions = completeMetaCommand(`\edi`, 4, 0, 4, maxCompletions)
+	require.NotNil(t, completions)
+	assert.Contains(t, completionReplacements(completions), `\edit`)
+}
+
+func TestCompleteEditFile(t *testing.T) {
+	originalDirectory, err := os.Getwd()
+	require.NoError(t, err)
+	root := t.TempDir()
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalDirectory))
+	})
+
+	require.NoError(t, os.Mkdir(filepath.Join(root, "queries"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "queries", "nested.sql"), nil, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "query.sql"), nil, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "query notes.sql"), nil, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, ".hidden.sql"), nil, 0o600))
+	require.NoError(t, os.Chdir(root))
+	t.Setenv("HOME", root)
+	t.Setenv("USERPROFILE", root)
+
+	t.Run("files and directories", func(t *testing.T) {
+		completions, handled := completeEditAtEnd(`\e que`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		replacements := completionReplacements(completions)
+		assert.Contains(t, replacements, "queries"+string(os.PathSeparator))
+		assert.Contains(t, replacements, "query.sql")
+		assert.Contains(t, replacements, `'query notes.sql'`)
+		assert.NotContains(t, replacements, ".hidden.sql")
+	})
+
+	t.Run("long alias", func(t *testing.T) {
+		completions, handled := completeEditAtEnd(`\edit query.s`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		assert.Equal(t, []string{"query.sql"}, completionReplacements(completions))
+	})
+
+	t.Run("nested file", func(t *testing.T) {
+		completions, handled := completeEditAtEnd(`\e queries/n`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		assert.Equal(t, []string{"queries/nested.sql"}, completionReplacements(completions))
+	})
+
+	t.Run("quoted file", func(t *testing.T) {
+		completions, handled := completeEditAtEnd(`\e "query n`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		assert.Equal(t, []string{`"query notes.sql"`}, completionReplacements(completions))
+	})
+
+	t.Run("tilde file", func(t *testing.T) {
+		completions, handled := completeEditAtEnd(`\e ~/query.s`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		assert.Equal(t, []string{"~/query.sql"}, completionReplacements(completions))
+	})
+
+	t.Run("explicit hidden file", func(t *testing.T) {
+		completions, handled := completeEditAtEnd(`\e .h`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		assert.Equal(t, []string{".hidden.sql"}, completionReplacements(completions))
+	})
 }
 
 func TestCompleteChangeDirectory(t *testing.T) {
@@ -109,6 +181,15 @@ func TestCompleteChangeDirectoryIgnoresOtherInput(t *testing.T) {
 
 func completeDirectoryAtEnd(input string) (bubbline.Completions, bool) {
 	return completeChangeDirectory(
+		[][]rune{[]rune(input)},
+		0,
+		utf8.RuneCountInString(input),
+		maxCompletions,
+	)
+}
+
+func completeEditAtEnd(input string) (bubbline.Completions, bool) {
+	return completeEditFile(
 		[][]rune{[]rune(input)},
 		0,
 		utf8.RuneCountInString(input),

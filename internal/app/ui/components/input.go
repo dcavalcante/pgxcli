@@ -70,6 +70,12 @@ func (m *InputModel) Reset() {
 	m.Model.Reset()
 }
 
+// SetValue replaces the current input and moves the cursor to its end.
+func (m *InputModel) SetValue(value string) tea.Cmd {
+	m.Model.Reset()
+	return m.Model.Write(value)
+}
+
 func (m *InputModel) AddHistoryEntry(entry string) {
 	m.Model.AddHistoryEntry(entry)
 }

@@ -28,6 +28,9 @@ func (p *pgxCLI) getCompletions() bubbline.AutoCompleteFn {
 	compEngine := engine.NewCompleter(p.compWorker.Cache())
 
 	return func(v [][]rune, line, col int) (msg string, comps bubbline.Completions) {
+		if comps, handled := completeEditFile(v, line, col, maxCompletions); handled {
+			return "", comps
+		}
 		if comps, handled := completeChangeDirectory(v, line, col, maxCompletions); handled {
 			return "", comps
 		}
@@ -106,7 +109,11 @@ func (p *pgxCLI) getCompletions() bubbline.AutoCompleteFn {
 
 func completeMetaCommand(s string, col, wStart, wEnd, limit int) (string, bubbline.Completions) {
 	cmds := pgxspecial.Export()
-	cmds = append(cmds, pgxspecial.New(`\cd`, `\cd [directory]`, "Change the current working directory."))
+	cmds = append(cmds,
+		pgxspecial.New(`\cd`, `\cd [directory]`, "Change the current working directory."),
+		pgxspecial.New(`\e`, `\e [filename]`, "Edit SQL with an external editor."),
+		pgxspecial.New(`\edit`, `\edit [filename]`, "Edit SQL with an external editor."),
+	)
 
 	var matches struct {
 		cmds []string

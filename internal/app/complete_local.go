@@ -11,7 +11,20 @@ import (
 )
 
 func completeChangeDirectory(input [][]rune, line, column, limit int) (bubbline.Completions, bool) {
-	currentLine, argumentStart, handled := changeDirectoryArgumentBounds(input, line, column)
+	return completeLocalPath(input, line, column, limit, []string{`\cd`}, false)
+}
+
+func completeEditFile(input [][]rune, line, column, limit int) (bubbline.Completions, bool) {
+	return completeLocalPath(input, line, column, limit, []string{`\edit`, `\e`}, true)
+}
+
+func completeLocalPath(
+	input [][]rune,
+	line, column, limit int,
+	commands []string,
+	includeFiles bool,
+) (bubbline.Completions, bool) {
+	currentLine, argumentStart, handled := localCommandArgumentBounds(input, line, column, commands)
 	if !handled {
 		return nil, false
 	}
@@ -26,7 +39,7 @@ func completeChangeDirectory(input [][]rune, line, column, limit int) (bubbline.
 		searchDirectory = "."
 	}
 
-	expandedDirectory, err := expandHomeDirectory(searchDirectory)
+	expandedDirectory, err := expandHomePath(searchDirectory)
 	if err != nil {
 		return nil, true
 	}
@@ -35,51 +48,65 @@ func completeChangeDirectory(input [][]rune, line, column, limit int) (bubbline.
 		return nil, true
 	}
 
-	words, descriptions := matchingDirectories(
+	words, descriptions := matchingPaths(
 		entries,
 		expandedDirectory,
 		directoryPrefix,
 		namePrefix,
 		quote,
 		limit,
+		includeFiles,
 	)
+	category := "directories"
+	if includeFiles {
+		category = "files and directories"
+	}
 
 	return editline.SimpleWordsCompletionWithDescriptions(
 		words,
 		descriptions,
-		"directories",
+		category,
 		column,
 		argumentStart,
 		len(currentLine),
 	), true
 }
 
-func changeDirectoryArgumentBounds(input [][]rune, line, column int) ([]rune, int, bool) {
+func localCommandArgumentBounds(
+	input [][]rune,
+	line, column int,
+	commands []string,
+) ([]rune, int, bool) {
 	if len(input) != 1 || line != 0 || column < 0 || column > len(input[0]) {
 		return nil, 0, false
 	}
 
 	currentLine := input[0]
-	command := []rune(`\cd`)
-	if len(currentLine) <= len(command) || string(currentLine[:len(command)]) != string(command) {
-		return nil, 0, false
-	}
-	if !unicode.IsSpace(currentLine[len(command)]) || column <= len(command) {
-		return nil, 0, false
+	for _, commandText := range commands {
+		command := []rune(commandText)
+		if len(currentLine) <= len(command) || string(currentLine[:len(command)]) != commandText {
+			continue
+		}
+		if !unicode.IsSpace(currentLine[len(command)]) || column <= len(command) {
+			continue
+		}
+
+		argumentStart := len(command)
+		for argumentStart < len(currentLine) && unicode.IsSpace(currentLine[argumentStart]) {
+			argumentStart++
+		}
+		return currentLine, argumentStart, true
 	}
 
-	argumentStart := len(command)
-	for argumentStart < len(currentLine) && unicode.IsSpace(currentLine[argumentStart]) {
-		argumentStart++
-	}
-	return currentLine, argumentStart, true
+	return nil, 0, false
 }
 
-func matchingDirectories(
+func matchingPaths(
 	entries []os.DirEntry,
 	searchDirectory, directoryPrefix, namePrefix string,
 	quote byte,
 	limit int,
+	includeFiles bool,
 ) (words, descriptions []string) {
 	if limit <= 0 {
 		return nil, nil
@@ -87,20 +114,26 @@ func matchingDirectories(
 
 	includeHidden := strings.HasPrefix(namePrefix, ".")
 	for _, entry := range entries {
-		if !entryIsDirectory(searchDirectory, entry) || !strings.HasPrefix(entry.Name(), namePrefix) {
+		isDirectory := entryIsDirectory(searchDirectory, entry)
+		if !isDirectory && !includeFiles || !strings.HasPrefix(entry.Name(), namePrefix) {
 			continue
 		}
 		if !includeHidden && strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
 
-		candidate := directoryPrefix + entry.Name() + completionPathSeparator(directoryPrefix)
+		candidate := directoryPrefix + entry.Name()
+		description := "file"
+		if isDirectory {
+			candidate += completionPathSeparator(directoryPrefix)
+			description = "directory"
+		}
 		candidate, ok := quoteCompletionPath(candidate, quote)
 		if !ok {
 			continue
 		}
 		words = append(words, candidate)
-		descriptions = append(descriptions, "directory")
+		descriptions = append(descriptions, description)
 		if len(words) >= limit {
 			break
 		}

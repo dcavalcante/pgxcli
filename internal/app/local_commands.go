@@ -28,6 +28,14 @@ var localCommands = map[string]localCommand{
 			return nil, changeWorkingDirectory(arguments)
 		},
 	},
+	"\\e": {
+		acceptsArguments: true,
+		handler:          editLocalCommand,
+	},
+	"\\edit": {
+		acceptsArguments: true,
+		handler:          editLocalCommand,
+	},
 }
 
 func (p *pgxCLI) runLocal(query string) (tea.Cmd, bool) {
@@ -54,7 +62,7 @@ func splitLocalCommand(query string) (command, arguments string, hasSeparator bo
 	return query[:separator], strings.TrimSpace(query[separator:]), true
 }
 
-func parseDirectoryArgument(raw string) (string, error) {
+func parsePathArgument(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", nil
@@ -80,7 +88,7 @@ func parseDirectoryArgument(raw string) (string, error) {
 	return raw, nil
 }
 
-func expandHomeDirectory(path string) (string, error) {
+func expandHomePath(path string) (string, error) {
 	if path != "~" && !strings.HasPrefix(path, "~/") && !strings.HasPrefix(path, `~\`) {
 		return path, nil
 	}
@@ -100,13 +108,13 @@ func changeWorkingDirectory(raw string) error {
 	path := "~"
 	if strings.TrimSpace(raw) != "" {
 		var err error
-		path, err = parseDirectoryArgument(raw)
+		path, err = parsePathArgument(raw)
 		if err != nil {
 			return err
 		}
 	}
 
-	expandedPath, err := expandHomeDirectory(path)
+	expandedPath, err := expandHomePath(path)
 	if err != nil {
 		return err
 	}

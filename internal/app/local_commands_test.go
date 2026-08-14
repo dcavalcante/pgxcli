@@ -75,7 +75,7 @@ func TestSplitLocalCommand(t *testing.T) {
 	}
 }
 
-func TestParseDirectoryArgument(t *testing.T) {
+func TestParsePathArgument(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -98,7 +98,7 @@ func TestParseDirectoryArgument(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseDirectoryArgument(testCase.raw)
+			got, err := parsePathArgument(testCase.raw)
 			if testCase.wantErr != "" {
 				require.ErrorContains(t, err, testCase.wantErr)
 				return
