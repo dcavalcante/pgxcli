@@ -65,6 +65,22 @@ Commands with `[pattern]` accept an optional filter. For example, `\dt public.*`
 
 ---
 
+## Change the Working Directory
+
+Use `\cd` to change the working directory used for local paths:
+
+```text
+\cd migrations
+\cd ../sql
+\cd "directory with spaces"
+```
+
+Running `\cd` without a directory changes to your home directory. Paths may be absolute, relative to the current working directory, or start with `~` to refer to your home directory.
+
+Press `Tab` after `\cd` to complete directory names. Hidden directories are suggested when the name being completed starts with `.`.
+
+---
+
 ## Built-in Commands
 
 These are pgxcli-specific:
