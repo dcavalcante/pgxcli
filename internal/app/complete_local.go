@@ -18,6 +18,10 @@ func completeEditFile(input [][]rune, line, column, limit int) (bubbline.Complet
 	return completeLocalPath(input, line, column, limit, []string{`\edit`, `\e`}, true)
 }
 
+func completeIncludeFile(input [][]rune, line, column, limit int) (bubbline.Completions, bool) {
+	return completeLocalPath(input, line, column, limit, []string{`\include`, `\i`}, true)
+}
+
 func completeLocalPath(
 	input [][]rune,
 	line, column, limit int,

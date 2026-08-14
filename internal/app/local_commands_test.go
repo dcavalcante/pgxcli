@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,14 +35,15 @@ func TestRunLocalMatchesClearExactly(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			cmd, matched := cli.runLocal(testCase.query)
+			execution, matched := cli.runLocal(context.Background(), testCase.query)
 			assert.Equal(t, testCase.match, matched)
 			if testCase.match {
-				require.NotNil(t, cmd)
-				assert.Equal(t, tea.ClearScreen(), cmd())
+				require.NotNil(t, execution.cmd)
+				assert.False(t, execution.delegatesExecution)
+				assert.Equal(t, tea.ClearScreen(), execution.cmd())
 				return
 			}
-			assert.Nil(t, cmd)
+			assert.Nil(t, execution.cmd)
 		})
 	}
 }
@@ -129,9 +131,10 @@ func TestChangeWorkingDirectory(t *testing.T) {
 
 	t.Run("local command dispatch", func(t *testing.T) {
 		require.NoError(t, os.Chdir(root))
-		cmd, matched := (&pgxCLI{}).runLocal(`\cd "` + quotedTarget + `"`)
+		execution, matched := (&pgxCLI{}).runLocal(context.Background(), `\cd "`+quotedTarget+`"`)
 		assert.True(t, matched)
-		assert.Nil(t, cmd)
+		assert.Nil(t, execution.cmd)
+		assert.False(t, execution.delegatesExecution)
 		assertWorkingDirectory(t, quotedTarget)
 	})
 

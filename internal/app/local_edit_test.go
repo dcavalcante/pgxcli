@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -99,14 +100,15 @@ func TestEditAliasesAreHandledLocally(t *testing.T) {
 	cli := &pgxCLI{}
 
 	for _, query := range []string{`\e`, `\edit`, `\e query.sql`, `\edit query.sql`} {
-		cmd, matched := cli.runLocal(query)
+		execution, matched := cli.runLocal(context.Background(), query)
 		assert.True(t, matched, query)
-		assert.NotNil(t, cmd, query)
+		assert.NotNil(t, execution.cmd, query)
+		assert.False(t, execution.delegatesExecution, query)
 	}
 
-	cmd, matched := cli.runLocal(`\editor query.sql`)
+	execution, matched := cli.runLocal(context.Background(), `\editor query.sql`)
 	assert.False(t, matched)
-	assert.Nil(t, cmd)
+	assert.Nil(t, execution.cmd)
 }
 
 func requireEditorFinishedMsg(t *testing.T, msg any) ui.EditorFinishedMsg {

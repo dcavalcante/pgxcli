@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCompleteMetaCommandIncludesChangeDirectory(t *testing.T) {
+func TestCompleteLocalMetaCommands(t *testing.T) {
 	t.Parallel()
 
 	_, completions := completeMetaCommand(`\c`, 2, 0, 2, maxCompletions)
@@ -25,6 +25,43 @@ func TestCompleteMetaCommandIncludesChangeDirectory(t *testing.T) {
 	_, completions = completeMetaCommand(`\edi`, 4, 0, 4, maxCompletions)
 	require.NotNil(t, completions)
 	assert.Contains(t, completionReplacements(completions), `\edit`)
+
+	_, completions = completeMetaCommand(`\i`, 2, 0, 2, maxCompletions)
+	require.NotNil(t, completions)
+	assert.Contains(t, completionReplacements(completions), `\i`)
+
+	_, completions = completeMetaCommand(`\inc`, 4, 0, 4, maxCompletions)
+	require.NotNil(t, completions)
+	assert.Contains(t, completionReplacements(completions), `\include`)
+}
+
+func TestCompleteIncludeFile(t *testing.T) {
+	originalDirectory, err := os.Getwd()
+	require.NoError(t, err)
+	root := t.TempDir()
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalDirectory))
+	})
+
+	require.NoError(t, os.Mkdir(filepath.Join(root, "queries"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "query.sql"), nil, 0o600))
+	require.NoError(t, os.Chdir(root))
+
+	t.Run("short command", func(t *testing.T) {
+		completions, handled := completeIncludeAtEnd(`\i que`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		replacements := completionReplacements(completions)
+		assert.Contains(t, replacements, "queries"+string(os.PathSeparator))
+		assert.Contains(t, replacements, "query.sql")
+	})
+
+	t.Run("long alias", func(t *testing.T) {
+		completions, handled := completeIncludeAtEnd(`\include query.s`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		assert.Equal(t, []string{"query.sql"}, completionReplacements(completions))
+	})
 }
 
 func TestCompleteEditFile(t *testing.T) {
@@ -190,6 +227,15 @@ func completeDirectoryAtEnd(input string) (bubbline.Completions, bool) {
 
 func completeEditAtEnd(input string) (bubbline.Completions, bool) {
 	return completeEditFile(
+		[][]rune{[]rune(input)},
+		0,
+		utf8.RuneCountInString(input),
+		maxCompletions,
+	)
+}
+
+func completeIncludeAtEnd(input string) (bubbline.Completions, bool) {
+	return completeIncludeFile(
 		[][]rune{[]rune(input)},
 		0,
 		utf8.RuneCountInString(input),

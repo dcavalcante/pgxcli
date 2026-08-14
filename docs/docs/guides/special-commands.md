@@ -99,6 +99,25 @@ pgxcli chooses the editor from `$PSQL_EDITOR`, `$EDITOR`, then `$VISUAL`. If non
 
 ---
 
+## Execute SQL from a File
+
+Use `\i` or `\include` to execute SQL statements from a file:
+
+```text
+\i migrations/create_tables.sql
+\include "queries/monthly report.sql"
+```
+
+Statements execute immediately through the normal query runner and follow the configured `on_error` behavior. Relative filenames use the current working directory, including changes made with `\cd`; paths may also start with `~`.
+
+Press `Tab` after `\i` or `\include` to complete files and directories.
+
+:::note
+Included files are currently treated as SQL only. Backslash commands, nested includes, psql variables, conditionals, and `\i -` are not supported inside included files.
+:::
+
+---
+
 ## Built-in Commands
 
 These are pgxcli-specific:
