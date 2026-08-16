@@ -110,6 +110,7 @@ func TestParseDirectoryArgument(t *testing.T) {
 	}
 }
 
+// os.Chdir is process-wide; keep this test serial and restore the original directory.
 func TestChangeWorkingDirectory(t *testing.T) {
 	originalDirectory, err := os.Getwd()
 	require.NoError(t, err)

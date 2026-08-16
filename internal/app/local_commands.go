@@ -33,6 +33,7 @@ var localCommands = map[string]localCommand{
 func (p *pgxCLI) runLocal(query string) (tea.Cmd, bool) {
 	commandName, arguments, hasSeparator := splitLocalCommand(query)
 	command, ok := localCommands[commandName]
+	// A separator means arguments were supplied; \clear remains an exact match.
 	if !ok || hasSeparator && !command.acceptsArguments {
 		return nil, false
 	}
@@ -110,6 +111,7 @@ func changeWorkingDirectory(raw string) error {
 	if err != nil {
 		return err
 	}
+	// \cd changes the process working directory for later local path operations.
 	if err := os.Chdir(expandedPath); err != nil {
 		return fmt.Errorf("change directory to %q: %w", path, err)
 	}

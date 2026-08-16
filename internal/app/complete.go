@@ -28,6 +28,7 @@ func (p *pgxCLI) getCompletions() bubbline.AutoCompleteFn {
 	compEngine := engine.NewCompleter(p.compWorker.Cache())
 
 	return func(v [][]rune, line, col int) (msg string, comps bubbline.Completions) {
+		// Complete \cd paths before handing the input to the SQL completer.
 		if comps, handled := completeChangeDirectory(v, line, col, maxCompletions); handled {
 			return "", comps
 		}

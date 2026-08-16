@@ -26,6 +26,7 @@ func completeChangeDirectory(input [][]rune, line, column, limit int) (bubbline.
 		searchDirectory = "."
 	}
 
+	// Read from the expanded path but preserve ~ in the replacement.
 	expandedDirectory, err := expandHomeDirectory(searchDirectory)
 	if err != nil {
 		return nil, true
@@ -54,6 +55,7 @@ func completeChangeDirectory(input [][]rune, line, column, limit int) (bubbline.
 	), true
 }
 
+// Complete only a single-line \cd with an argument; bare \cd stays with meta-command completion.
 func changeDirectoryArgumentBounds(input [][]rune, line, column int) ([]rune, int, bool) {
 	if len(input) != 1 || line != 0 || column < 0 || column > len(input[0]) {
 		return nil, 0, false
@@ -158,6 +160,7 @@ func entryIsDirectory(parent string, entry os.DirEntry) bool {
 		return false
 	}
 
+	// Resolve symlinks because DirEntry describes the link, not its target.
 	info, err := os.Stat(filepath.Join(parent, entry.Name()))
 	return err == nil && info.IsDir()
 }
