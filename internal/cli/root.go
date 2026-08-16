@@ -81,12 +81,10 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 			if err := cliCtx.App.Start(ctx); err != nil {
 				return err
 			}
-			cliCtx.Printer.Println("Thanks for using Pgxcli.")
-			cliCtx.Printer.Println("see you next time.")
 			return nil
 		},
 
-		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
+		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
 			if cliCtx.App != nil {
 				if err := cliCtx.App.Close(); err != nil {
 					return err
@@ -101,6 +99,11 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 				if err := cliCtx.Logger.Close(); err != nil {
 					return err
 				}
+			}
+			// Keep future non-interactive subcommand output free of the interactive farewell.
+			if cmd == cmd.Root() {
+				cliCtx.Printer.Println("Thanks for using Pgxcli.")
+				cliCtx.Printer.Println("see you next time.")
 			}
 			return nil
 		},
