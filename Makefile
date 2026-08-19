@@ -2,11 +2,19 @@ MAIN_PATH = "main.go"
 BUILD_PATH = "bin"
 TIMEOUT = 60
 
+VERSION ?= $(shell tr -d '\r\n' < VERSION 2>/dev/null || echo "dev")
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "unknown")
+
+LDFLAGS = -X github.com/balajz/pgxcli/internal/version.Version=$(VERSION) \
+          -X github.com/balajz/pgxcli/internal/version.Commit=$(COMMIT) \
+          -X github.com/balajz/pgxcli/internal/version.BuildTime=$(DATE)
+
 .PHONY: build clean run update runc lint test precommit fmt vet test-race test-short test-verbose test-bench test-integration coverage go-mod-tidy
 
 build:
 	@mkdir -p $(BUILD_PATH)
-	@CGO_ENABLED=0 go build -o $(BUILD_PATH)/app $(MAIN_PATH)
+	@CGO_ENABLED=0 go build -ldflags "-s -w $(LDFLAGS)" -o $(BUILD_PATH)/app $(MAIN_PATH)
 	@echo "✓ Build complete: $(BUILD_PATH)/app"
 
 fmt:
@@ -71,7 +79,6 @@ update:
 
 
 DOCS_DIR := ./docs-site
-VERSION ?= v0.1.1
 
 docs-init:
 	git worktree add $(DOCS_DIR) docs
