@@ -57,6 +57,13 @@ func TestCompleteChangeDirectory(t *testing.T) {
 		assert.Equal(t, []string{"~/alpha/"}, completionReplacements(completions))
 	})
 
+	t.Run("tilde root", func(t *testing.T) {
+		completions, handled := completeDirectoryAtEnd(`\cd ~`)
+		require.True(t, handled)
+		require.NotNil(t, completions)
+		assert.Equal(t, []string{"~" + string(os.PathSeparator)}, completionReplacements(completions))
+	})
+
 	t.Run("quoted path", func(t *testing.T) {
 		completions, handled := completeDirectoryAtEnd(`\cd "two`)
 		require.True(t, handled)

@@ -20,6 +20,23 @@ func completeChangeDirectory(input [][]rune, line, column, limit int) (bubbline.
 	}
 
 	prefix, quote := directoryCompletionPrefix(string(currentLine[argumentStart:column]))
+	// Keep ~ in the input and append a separator so later completion reads its home directory.
+	if prefix == "~" {
+		candidate, ok := quoteCompletionPath("~"+string(os.PathSeparator), quote)
+		if !ok {
+			return nil, true
+		}
+
+		return editline.SimpleWordsCompletionWithDescriptions(
+			[]string{candidate},
+			[]string{"home directory"},
+			"directories",
+			column,
+			argumentStart,
+			len(currentLine),
+		), true
+	}
+
 	directoryPrefix, namePrefix := filepath.Split(prefix)
 	searchDirectory := directoryPrefix
 	if searchDirectory == "" {
