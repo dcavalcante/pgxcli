@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -85,20 +86,28 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 		},
 
 		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-			if cliCtx.App != nil {
-				if err := cliCtx.App.Close(); err != nil {
-					return err
-				}
-			}
-			if cliCtx.Client != nil {
-				if err := cliCtx.Client.Close(ctx); err != nil {
-					return err
-				}
-			}
-			if cliCtx.Logger != nil {
-				if err := cliCtx.Logger.Close(); err != nil {
-					return err
-				}
+			cleanupErr := closeResources(
+				func() error {
+					if cliCtx.App == nil {
+						return nil
+					}
+					return cliCtx.App.Close()
+				},
+				func() error {
+					if cliCtx.Client == nil {
+						return nil
+					}
+					return cliCtx.Client.Close(ctx)
+				},
+				func() error {
+					if cliCtx.Logger == nil {
+						return nil
+					}
+					return cliCtx.Logger.Close()
+				},
+			)
+			if cleanupErr != nil {
+				return cleanupErr
 			}
 			// Keep future non-interactive subcommand output free of the interactive farewell.
 			if cmd == cmd.Root() {
@@ -126,6 +135,19 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 	rootCmd.MarkFlagsMutuallyExclusive("no-password", "password")
 
 	return rootCmd
+}
+
+// Close every resource so failures do not prevent later cleanup.
+func closeResources(closers ...func() error) error {
+	var errs []error
+
+	for _, close := range closers {
+		if err := close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 type connectionParams struct {

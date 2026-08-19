@@ -1,9 +1,15 @@
 package cli
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/balajz/pgxcli/internal/cliio"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +23,91 @@ type dbAndUserTestCase struct {
 
 	expectedDB   string
 	expectedUser string
+}
+
+type testApp struct {
+	closeErr    error
+	closeCalled bool
+}
+
+func (a *testApp) Start(context.Context) error { return nil }
+
+func (a *testApp) Close() error {
+	a.closeCalled = true
+	return a.closeErr
+}
+
+func TestCloseResourcesClosesEverythingAndJoinsErrors(t *testing.T) {
+	t.Parallel()
+
+	appErr := errors.New("app close failed")
+	loggerErr := errors.New("logger close failed")
+	var calls []string
+
+	err := closeResources(
+		func() error {
+			calls = append(calls, "app")
+			return appErr
+		},
+		func() error {
+			calls = append(calls, "client")
+			return nil
+		},
+		func() error {
+			calls = append(calls, "logger")
+			return loggerErr
+		},
+	)
+
+	assert.Equal(t, []string{"app", "client", "logger"}, calls)
+	assert.ErrorIs(t, err, appErr)
+	assert.ErrorIs(t, err, loggerErr)
+}
+
+func TestPersistentPostRunCleanupAndFarewell(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name         string
+		childCommand bool
+		cleanupFails bool
+		wantFarewell bool
+	}{
+		{name: "root success", wantFarewell: true},
+		{name: "root failure", cleanupFails: true},
+		{name: "child success", childCommand: true},
+		{name: "child failure", childCommand: true, cleanupFails: true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			var output bytes.Buffer
+			var closeErr error
+			if testCase.cleanupFails {
+				closeErr = errors.New("history save failed")
+			}
+			testApplication := &testApp{closeErr: closeErr}
+			cliCtx := &CliContext{
+				App:     testApplication,
+				Printer: cliio.NewPgxPrinter(&output, io.Discard),
+			}
+			rootCmd := NewRootCmd(context.Background(), cliCtx)
+			cmd := rootCmd
+			if testCase.childCommand {
+				cmd = &cobra.Command{Use: "export"}
+				rootCmd.AddCommand(cmd)
+			}
+
+			err := rootCmd.PersistentPostRunE(cmd, nil)
+			if closeErr != nil {
+				require.ErrorIs(t, err, closeErr)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.True(t, testApplication.closeCalled)
+			assert.Equal(t, testCase.wantFarewell, strings.Contains(output.String(), "Thanks for using Pgxcli."))
+		})
+	}
 }
 
 func TestPromptPasswordFallsBackToFullLineInput(t *testing.T) {
