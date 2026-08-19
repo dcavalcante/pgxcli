@@ -26,8 +26,9 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
+      - -X github.com/balajz/pgxcli/internal/version.Version={{.Version}}
+      - -X github.com/balajz/pgxcli/internal/version.Commit={{.Commit}}
+      - -X github.com/balajz/pgxcli/internal/version.BuildTime={{.Date}}
 
   - id: darwin
     main: .
@@ -38,8 +39,9 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
+      - -X github.com/balajz/pgxcli/internal/version.Version={{.Version}}
+      - -X github.com/balajz/pgxcli/internal/version.Commit={{.Commit}}
+      - -X github.com/balajz/pgxcli/internal/version.BuildTime={{.Date}}
 
   - id: windows
     main: .
@@ -50,8 +52,9 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
+      - -X github.com/balajz/pgxcli/internal/version.Version={{.Version}}
+      - -X github.com/balajz/pgxcli/internal/version.Commit={{.Commit}}
+      - -X github.com/balajz/pgxcli/internal/version.BuildTime={{.Date}}
 
 archives:
   - id: linux-archive
