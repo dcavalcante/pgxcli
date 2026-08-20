@@ -77,10 +77,7 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 				cliCtx.Logger.Error("Application context not initialized")
 				return fmt.Errorf("application context not initialized")
 			}
-			if err := cliCtx.App.Start(ctx); err != nil {
-				return err
-			}
-			return nil
+			return cliCtx.App.Start(ctx)
 		},
 
 		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
