@@ -19,13 +19,11 @@ import (
 	"github.com/balajz/pgxcli/internal/database"
 	"github.com/balajz/pgxcli/internal/logger"
 	"github.com/balajz/pgxcli/internal/perrors"
+	"github.com/balajz/pgxcli/internal/version"
 	"github.com/spf13/cobra"
 )
 
-var (
-	version = "0.3.0"
-	osUser  = osUsername()
-)
+var osUser = osUsername()
 
 // NewRootCmd builds the root cobra command and wires the CLI lifecycle hooks.
 func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
@@ -43,7 +41,7 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:           "pgxcli [DBNAME] [USERNAME]",
 		Short:         "Interactive PostgreSQL command-line client for querying and managing databases.",
-		Version:       version,
+		Version:       version.FullVersion(),
 		Args:          cobra.MaximumNArgs(2), // Database name and username are optional example: pgxcli mydb myuser
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -117,6 +115,8 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 			return nil
 		},
 	}
+
+	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
 
 	// deactivating of the -h shorthand flag, so that it can be used in the host flag
 	rootCmd.PersistentFlags().BoolP("help", "", false, "Print usage")
@@ -401,7 +401,7 @@ func ensureConnected(cliCtx *CliContext) error {
 // initApplication Initializes the app,
 // which includes setting up the logger, config and database client.
 func initApplication(cliCtx *CliContext) error {
-	pgxCLI, err := app.New(cliCtx.config, cliCtx.Printer, cliCtx.Logger.Logger, cliCtx.Client, version)
+	pgxCLI, err := app.New(cliCtx.config, cliCtx.Printer, cliCtx.Logger.Logger, cliCtx.Client, version.Version)
 	if err != nil {
 		cliCtx.Logger.Error("Failed to initialize app", "error", err)
 		return err

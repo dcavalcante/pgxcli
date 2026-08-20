@@ -49,11 +49,12 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = $env:TAG_NAME -replace '^v', ''
+          $BUILD_TIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
           $env:CGO_ENABLED = "0"
           go build `
-            -ldflags "-s -w -X main.version=$VERSION -X main.commit=$env:GITHUB_SHA" `
+            -ldflags "-s -w -X github.com/balajz/pgxcli/internal/version.Version=$VERSION -X github.com/balajz/pgxcli/internal/version.Commit=$env:GITHUB_SHA -X github.com/balajz/pgxcli/internal/version.BuildTime=$BUILD_TIME" `
             -o build/windows/amd64/pgxcli.exe `
 
       - name: Set up MSBuild
