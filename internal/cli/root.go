@@ -22,9 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	osUser  = osUsername()
-)
+var osUser = osUsername()
 
 // NewRootCmd builds the root cobra command and wires the CLI lifecycle hooks.
 func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
@@ -42,7 +40,7 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:           "pgxcli [DBNAME] [USERNAME]",
 		Short:         "Interactive PostgreSQL command-line client for querying and managing databases.",
-		Version:       version.Version,
+		Version:       version.FullVersion(),
 		Args:          cobra.MaximumNArgs(2), // Database name and username are optional example: pgxcli mydb myuser
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -106,7 +104,7 @@ func NewRootCmd(ctx context.Context, cliCtx *CliContext) *cobra.Command {
 		},
 	}
 
-	rootCmd.SetVersionTemplate(version.FullVersion() + "\n")
+	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
 
 	// deactivating of the -h shorthand flag, so that it can be used in the host flag
 	rootCmd.PersistentFlags().BoolP("help", "", false, "Print usage")
