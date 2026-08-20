@@ -28,6 +28,10 @@ func (p *pgxCLI) getCompletions() bubbline.AutoCompleteFn {
 	compEngine := engine.NewCompleter(p.compWorker.Cache())
 
 	return func(v [][]rune, line, col int) (msg string, comps bubbline.Completions) {
+		// Complete \cd paths before handing the input to the SQL completer.
+		if comps, handled := completeChangeDirectory(v, line, col, maxCompletions); handled {
+			return "", comps
+		}
 
 		sql, _ := computil.Flatten(v, line, col)
 		word, wstart, wend := computil.FindWord(v, line, col)
@@ -103,6 +107,7 @@ func (p *pgxCLI) getCompletions() bubbline.AutoCompleteFn {
 
 func completeMetaCommand(s string, col, wStart, wEnd, limit int) (string, bubbline.Completions) {
 	cmds := pgxspecial.Export()
+	cmds = append(cmds, pgxspecial.New(`\cd`, `\cd [directory]`, "Change the current working directory."))
 
 	var matches struct {
 		cmds []string
