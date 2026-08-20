@@ -2,7 +2,7 @@ MAIN_PATH = "main.go"
 BUILD_PATH = "bin"
 TIMEOUT = 60
 
-VERSION ?= $(shell tr -d '\r\n' < VERSION 2>/dev/null || echo "dev")
+VERSION ?= $(shell tr -d '\r\n' 2>/dev/null < VERSION || echo "dev")
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "unknown")
 
