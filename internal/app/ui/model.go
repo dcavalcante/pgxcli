@@ -36,6 +36,12 @@ const (
 // ReadyMsg signals the ui that execution is done and it should prompt.
 type ReadyMsg struct{ Prefix string }
 
+// EditorFinishedMsg returns edited text, or an editor error, to the input model.
+type EditorFinishedMsg struct {
+	Text string
+	Err  error
+}
+
 // ExecCmdMsg is used to dispatch a batch/sequence of commands.
 type ExecCmdMsg struct{ Cmd tea.Cmd }
 
@@ -162,6 +168,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input.SetPrompt(msg.Prefix)
 		}
 		return m, nil
+
+	case EditorFinishedMsg:
+		m.state = StateInput
+		m.isSpinning = false
+		if msg.Err != nil {
+			return m, PrintErrCmd(msg.Err, m.styles.ErrorOutput)
+		}
+		return m, m.input.SetValue(msg.Text)
 
 	case ExecCmdMsg:
 		return m, msg.Cmd

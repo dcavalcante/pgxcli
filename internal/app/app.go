@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -39,7 +40,8 @@ type pgxCLI struct {
 	client     *database.Client
 	compWorker *compDB.Worker
 
-	version string
+	version   string
+	lastQuery string
 }
 
 func New(cfg *config.Config, printer cliio.Printer, logger *slog.Logger, client *database.Client, version string) (Application, error) {
@@ -62,6 +64,9 @@ func (p *pgxCLI) execute(ctx context.Context, query string) tea.Cmd {
 	if cmd, ok := p.runLocal(query); ok {
 		p.logger.Debug("executing builtin command", "command", query)
 		return p.withPrompt(cmd)
+	}
+	if !strings.HasPrefix(query, `\`) {
+		p.lastQuery = query
 	}
 
 	return func() tea.Msg {
