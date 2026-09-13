@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -13,45 +14,73 @@ import (
 
 type localCommand struct {
 	acceptsArguments bool
-	handler          func(*pgxCLI, string) (tea.Cmd, error)
+	managesPrompt    bool
+	handler          func(context.Context, *pgxCLI, string) (tea.Cmd, error)
+}
+
+type localCommandExecution struct {
+	cmd tea.Cmd
+	// managesPrompt is true when the returned command delegates to an execution
+	// path that already schedules the next prompt.
+	managesPrompt bool
 }
 
 var localCommands = map[string]localCommand{
 	"\\clear": {
-		handler: func(_ *pgxCLI, _ string) (tea.Cmd, error) {
+		handler: func(_ context.Context, _ *pgxCLI, _ string) (tea.Cmd, error) {
 			return tea.ClearScreen, nil
 		},
 	},
 	"\\cd": {
 		acceptsArguments: true,
-		handler: func(_ *pgxCLI, arguments string) (tea.Cmd, error) {
+		handler: func(_ context.Context, _ *pgxCLI, arguments string) (tea.Cmd, error) {
 			return nil, changeWorkingDirectory(arguments)
 		},
 	},
 	"\\e": {
 		acceptsArguments: true,
-		handler:          editLocalCommand,
+		handler: func(_ context.Context, p *pgxCLI, arguments string) (tea.Cmd, error) {
+			return editLocalCommand(p, arguments)
+		},
 	},
 	"\\edit": {
 		acceptsArguments: true,
-		handler:          editLocalCommand,
+		handler: func(_ context.Context, p *pgxCLI, arguments string) (tea.Cmd, error) {
+			return editLocalCommand(p, arguments)
+		},
+	},
+	"\\i": {
+		acceptsArguments: true,
+		managesPrompt:    true,
+		handler:          includeLocalCommand,
+	},
+	"\\include": {
+		acceptsArguments: true,
+		managesPrompt:    true,
+		handler:          includeLocalCommand,
 	},
 }
 
-func (p *pgxCLI) runLocal(query string) (tea.Cmd, bool) {
+func (p *pgxCLI) runLocal(ctx context.Context, query string) (localCommandExecution, bool) {
 	commandName, arguments, hasSeparator := splitLocalCommand(query)
 	command, ok := localCommands[commandName]
 	// A separator means arguments were supplied; \clear remains an exact match.
 	if !ok || hasSeparator && !command.acceptsArguments {
-		return nil, false
+		return localCommandExecution{}, false
 	}
 
-	cmd, err := command.handler(p, arguments)
+	cmd, err := command.handler(ctx, p, arguments)
 	if err != nil {
-		return p.printError(fmt.Errorf("%s: %w", commandName, err)), true
+		// Errors stay on the normal local-command path so execute adds the next prompt.
+		return localCommandExecution{
+			cmd: p.printError(fmt.Errorf("%s: %w", commandName, err)),
+		}, true
 	}
 
-	return cmd, true
+	return localCommandExecution{
+		cmd:           cmd,
+		managesPrompt: command.managesPrompt,
+	}, true
 }
 
 func splitLocalCommand(query string) (command, arguments string, hasSeparator bool) {
